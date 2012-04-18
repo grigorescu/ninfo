@@ -209,7 +209,7 @@ class Ninfo:
         plugins = [self.get_plugin(p) for p in sorted(self.plugins.keys())]
         return [p for p in plugins if p]
 
-    def get_info(self, plugin, arg):
+    def get_info(self, plugin, arg, retries=1):
         """Call `plugin` with `arg` and cache and return the result"""
         if not self.compatible_argument(plugin, arg):
             return None
@@ -228,6 +228,10 @@ class Ninfo:
             return ret
         except Exception, e:
             logger.exception("Error running plugin %s" % plugin)
+            if retries:
+                if plugin in self.plugin_instances:
+                    del self.plugin_instances[plugin]
+                return self.get_info(plugin, arg, retries-1)
             raise
 
     def get_info_json(self, plugin, arg):
@@ -257,8 +261,11 @@ class Ninfo:
             inst = self.get_inst(p)
             if not inst:
                 continue
-            result = self.get_info(p, arg)
-            yield inst, result
+            try :
+                result = self.get_info(p, arg)
+                yield inst, result
+            except:
+                pass
 
     def get_info_dict(self, arg):
         res = {}
